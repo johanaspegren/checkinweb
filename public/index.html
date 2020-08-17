@@ -1,0 +1,291 @@
+<html>
+<body>
+
+  <h1>
+    User database
+  </h1>
+  
+  <input type = "text" id = "txtName" value = "namn"> <br>
+  <input type = "text" id = "txtTelefon" value = "045112345"><br>
+  <input type = "text" id = "txtContact" value = "kontakt"><br>
+  <select name = "selHour" id = "selHour">
+    <option value="09">09</option>
+    <option value="10">10</option>
+    <option value="11">11</option>
+    <option value="12">12</option>
+    <option value="13">13</option>
+    <option value="14">14</option>
+    <option value="15">15</option>
+    <option value="16">16</option>
+    <option value="17">17</option>
+    <option value="18">18</option>
+  </select>
+  <select name = "selMinute" id = "selMinute">
+    <option value="00">00</option>
+    <option value="15">15</option>
+    <option value="30">30</option>
+    <option value="45">45</option>
+  </select>
+  <br>
+  <input type = "button" value = "Registrera" id = "register" onclick="register()">
+
+  <br>
+  <br>
+  <table id = "callersTable">
+  </table>
+  
+  
+<!-- The core Firebase JS SDK is always required and must be listed first -->
+  <!-- Insert these scripts at the bottom of the HTML, but before you use any Firebase services -->
+
+  <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+  <script src="https://www.gstatic.com/firebasejs/7.17.2/firebase-app.js"></script>
+  
+  <!-- If you enabled Analytics in your project, add the Firebase SDK for Analytics -->
+  <script src="https://www.gstatic.com/firebasejs/7.17.2/firebase-analytics.js"></script>
+
+  <!-- Add Firebase products that you want to use -->
+  <script src="https://www.gstatic.com/firebasejs/7.17.2/firebase-auth.js"></script>
+
+  <script src="https://www.gstatic.com/firebasejs/7.17.2/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.17.2/firebase-database.js"></script>
+  
+  <!-- Initialize Firebase -->
+  <script src="/__/firebase/init.js"></script>
+
+<!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#available-libraries -->
+
+<script>
+  // Your web app's Firebase configuration
+  var firebaseConfig = {
+    apiKey: "AIzaSyDuZO2cNnSB8Y5pqnpdipisQLM5nzOeU-4",
+    authDomain: "checkin-98f21.firebaseapp.com",
+    databaseURL: "https://checkin-98f21.firebaseio.com",
+    projectId: "checkin-98f21",
+    storageBucket: "checkin-98f21.appspot.com",
+    messagingSenderId: "517183868702",
+    appId: "1:517183868702:web:048b51e2bcede21e6c030f"
+  };
+
+  // Initialize Firebase
+  if (!firebase.apps.length) {
+   //firebase.initializeApp({});
+   firebase.initializeApp(firebaseConfig);
+  }
+
+  // Get a reference to the database service
+  var database = firebase.database();
+
+  var LATE = "SEN"
+  var PENDING = "VÄNTAR"
+  var OK = "OK"
+
+function register() {
+  console.log("register")
+  var name = document.getElementById("txtName").value
+  var telephone = document.getElementById("txtTelefon").value
+  var contact = document.getElementById("txtContact").value
+  var sel = document.getElementById("selHour")
+  var hour = sel.options[sel.selectedIndex].text
+  var selMin = document.getElementById("selMinute")
+  var minute = selMin.options[selMin.selectedIndex].text
+  var callBefore = hour + ":" + minute 
+  writeCaller(name, telephone, contact, callBefore) 
+}
+
+function writeCaller(_name, _telephone, _contact, _callBefore) {
+  console.log("write caller")
+  firebase.database().ref('callers/' + _telephone).set({
+    name: _name,
+    phoneNr: _telephone,
+    contact: _contact,
+    callBefore: _callBefore
+  });
+}
+
+function checkinCaller(_telephone, _now) {
+  console.log("write caller")
+  firebase.database().ref('callers/' + _telephone).update({
+    lastCalled: _now
+  });
+}
+
+
+function writeUserData(userId, name, email, imageUrl) {
+  firebase.database().ref('users/' + userId).set({
+    username: name,
+    email: email,
+    profile_picture : imageUrl
+  });
+}
+
+//writeUserData("mittuserId2", "Noa MA", "noa.aspegren@gmail.com", "imageUrl")
+
+
+
+// Find a <table> element with id="myTable":
+var table = document.getElementById("callersTable");
+var header = table.createTHead();
+// Create an empty <tr> element and add it to the first position of <thead>:
+var hrow = header.insertRow(0);
+// Insert a new cell (<td>) at the first position of the "new" <tr> element:
+var hcell1 = hrow.insertCell(0);
+var hcell2 = hrow.insertCell(1);
+var hcell3 = hrow.insertCell(2);
+var hcell4 = hrow.insertCell(3);
+var hcell5 = hrow.insertCell(4);
+
+// Add some bold text in the new cell:
+hcell1.innerHTML = "<b>Namn</b>";
+hcell2.innerHTML = "<b>Senast check in</b>";
+hcell3.innerHTML = "<b>Status</b>";
+hcell4.innerHTML = "<b>Checkar in före</b>";
+hcell5.innerHTML = "<b>Checka in direkt</b>";
+
+firebase.database()
+    .ref('/callers/').orderByChild('lastCalled')
+    .once('value', function(snapshot){
+      console.log("TABLE")
+      snapshot.forEach(function(childSnapshot){
+        var row = table.insertRow(1);
+        var lc = getLastCall(childSnapshot.val().lastCalled)
+        var namn = childSnapshot.val().name
+        var phone = childSnapshot.val().phoneNr
+        var callBefore = childSnapshot.val().callBefore
+        var status = calculateStatus(childSnapshot.val().lastCalled, callBefore);
+        var checkinButton = document.createElement("Button");
+        checkinButton.textContent = "Check in";
+        checkinButton.onclick = 
+        function(){
+          now = new Date().getTime()
+          alert('Checka in: ' + namn + " nr: " + phone + " now " + now);
+          checkinCaller(phone, now);
+          console.log(namn)
+          }
+
+        var cell1 = row.insertCell(0);
+        var cell2 = row.insertCell(1);
+        var cell3 = row.insertCell(2);
+        var cell4 = row.insertCell(3);
+        var cell5 = row.insertCell(4);
+        
+        cell1.innerHTML = namn;
+        cell2.innerHTML = lc;
+        cell3.innerHTML = status;
+        cell4.innerHTML = callBefore;
+        var cellId = "id_" + namn
+        cell5.id = cellId
+        document.getElementById(cellId).appendChild(checkinButton);
+
+        if(status == OK) {
+          cell3.bgColor = 'GREEN'
+        }
+        if(status == PENDING) {
+          cell3.bgColor = 'YELLOW'
+        }
+        if(status == LATE) {
+          cell3.bgColor = 'RED'
+        }
+
+        console.log("TR")
+        console.log("key " + childSnapshot.key)
+        console.log(childSnapshot.val())
+        console.log("lc = " + lc)        
+        console.log("name = " + namn)        
+      });
+    });
+
+
+function getLastCall(ms) {
+  if (!ms) {return ""} 
+  var m = new Date(ms);
+  var dateString =
+    m.getUTCFullYear() + "/" +
+    ("0" + (m.getUTCMonth()+1)).slice(-2) + "/" +
+    ("0" + m.getUTCDate()).slice(-2) + " " +
+    ("0" + m.getUTCHours()).slice(-2) + ":" +
+    ("0" + m.getUTCMinutes()).slice(-2) + ":" +
+    ("0" + m.getUTCSeconds()).slice(-2);
+
+  return dateString
+}
+
+function isToday (ms){
+  var someDate = new Date(ms)
+  var today = new Date()
+  return someDate.getDate() == today.getDate() &&
+    someDate.getMonth() == today.getMonth() &&
+    someDate.getFullYear() == today.getFullYear()
+}
+
+function beforeYesterday(ms) {
+  var d = new Date(ms);
+  var today = new Date();
+  var yDay = new Date(today.getFullYear(), 
+                        today.getMonth(), 
+                        today.getDate() - 1, 0, 0, 0, 0);
+  if(d.getTime() <= yDay.getTime()) {
+    console.log("supplied date (" + d + ") is before yesterday " + yDay);
+    return true
+  }
+  console.log("supplied date (" + d + ") is after yesterday " + yDay);
+    return false
+}
+
+function hoursAgo(date1, date2) {
+  var hours = Math.abs(date1 - date2) / 36e5;
+  console.log("d1 " + date1 + " d2 " + date2)
+  console.log("hours = " + hours)
+  return hours
+}
+
+function isPending(callBefore) {
+  entryArray = callBefore.split(":");
+  timme = entryArray[0]
+  minut = entryArray[1]
+
+  var now1 = new Date();
+  var expect = new Date(now1.getFullYear(), 
+                        now1.getMonth(), 
+                        now1.getDate(), timme, minut, 0, 0)
+  var now = new Date();
+  if (expect.getTime() <= now.getTime) {
+    console.log("LATE expect  " + expect + " is less than now = " + now)
+    return false
+  }
+  console.log("pending expect  " + expect + " is larger than now = " + now)
+  return true;
+}
+
+function calculateStatus(lastCalled, callBefore) {
+  // time not expired ? return PENDING
+  // RETURN PENDING
+  now = new Date()
+  // call today ? return OK
+  if (isToday(lastCalled)) { return OK;}
+  // nocall yesterday? return LATE
+  if (beforeYesterday(lastCalled)) { return LATE;}
+  // if we get here we had a call yesterday and we are waiting for todays call
+  // check if time is not expired
+  if (isPending(callBefore)) {return PENDING}
+  // fallback to LATE
+  return LATE
+
+}
+
+
+getData()
+function getData(){
+
+}
+
+
+</script>
+
+
+</body>
+
+
+
+</html>
